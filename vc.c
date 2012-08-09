@@ -103,5 +103,5 @@ int main(int argc, char* argv[])
 	
 	return 0;
 }
-/* cc -o lua lua.c msg.c /usr/local/lib/liblua.a -ldl -lm -lreadline */
+/* cc -o vc vc.c msg.c /usr/local/lib/liblua.a -ldl -lm -lreadline */
 
