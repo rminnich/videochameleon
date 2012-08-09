@@ -1,15 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <lualib.h>
-#include <lauxlib.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include "vc.h"
 
 static int usbfd = -1, pipefd = -1;

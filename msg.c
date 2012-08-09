@@ -140,7 +140,7 @@ ProcessMessages(int usbfd, int pipefd)
  * it is assumed that if this is called, the ack was correct. Also, it is called with the 
  * result data, not including the length and response code (i.e. with &result[2]
  */
-void dumpresult(struct command *c, unsigned long *args, unsigned char *result, int resultlen)
+void dumpresult(const struct command *c, unsigned long *args, unsigned char *result, int resultlen)
 {
 	int i, j;
 	for(i = 0; i < resultlen; i += 16){
@@ -152,25 +152,20 @@ void dumpresult(struct command *c, unsigned long *args, unsigned char *result, i
 	}
 }
 
-/* this should probably be in a different file. */
-/* there are only 256 commands. Just index the table by the command number. */
-struct command commands[] = {
-	['\t'] {"debugon", '\t', 0, NULL, '\f', "debugon", NULL},
-	[0x11] {"param", 0x11, 1, "bi", 0x12, "param <param #> <value>", NULL},
-	[0x52] {"rm", 0x52, 2, "ii", 'R', "read base length", dumpresult},
-};
-
 int
 Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned long args[], int nargs)
 {
 	int i;
-	struct command *command;
+	const struct command *command;
 	unsigned char msg[255], paramresult[255];
 	int msglen, amt;
 	int index;
 	int paramfail;
+	int paramindex = 1;
+	unsigned long paramargs[2];
+	int cmdlen;
 
-	for(i = 0, command = NULL; i < 256 && ! command; i++){
+	for(i = 0, command = NULL; i < numcommands && ! command; i++){
 		if (! commands[i].name)
 			continue;
 		if (! strcmp(commands[i].name, name))
@@ -186,8 +181,10 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 	}
 
 	msg[0] = 2;
-	msg[1] = command->athenacommand;
-	index = 2;
+	cmdlen = strlen(command->athenacommand);
+	memcpy(&msg[1], command->athenacommand, cmdlen);
+	msg[0] += cmdlen;
+	index = 1 + cmdlen;
 
 	for(i = 0; i < command->nargs; i++){
 		switch(command->format[i]){
@@ -203,8 +200,10 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 			msg[0]++;
 			break;
 		case 'p':
-			paramfail = Command("param", paramresult, usbfd, pipefd, &args[i], 2);
-			i += 2;
+			/* params are sent as separate commands */
+			paramargs[0] = paramindex++;
+			paramargs[1] = args[i];
+			paramfail = Command("param", paramresult, usbfd, pipefd, paramargs, 2);
 			if (paramfail)
 				return paramfail;
 			break;
