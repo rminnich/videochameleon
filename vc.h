@@ -20,3 +20,6 @@ extern struct command commands[];
 extern int numcommands;
 /* errstr is a global, but the difference is it has useful info as opposed to that other global, errno */
 extern char errstr[];
+
+/* command defines */
+#define PARAMOK 0xc

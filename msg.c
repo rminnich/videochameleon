@@ -153,23 +153,26 @@ void dumpresult(struct command *c, unsigned long *args, unsigned char *result, i
 }
 
 /* this should probably be in a different file. */
+/* there are only 256 commands. Just index the table by the command number. */
 struct command commands[] = {
-	{"debugon", '\t', 0, NULL, '\f', "debugon", NULL},
-	{"rm", 0x52, 2, "ii", 'R', "read base length", dumpresult},
+	['\t'] {"debugon", '\t', 0, NULL, '\f', "debugon", NULL},
+	[0x11] {"param", 0x11, 1, "bi", 0x12, "param <param #> <value>", NULL},
+	[0x52] {"rm", 0x52, 2, "ii", 'R', "read base length", dumpresult},
 };
-/* I miss Go already */
-int numcommands = sizeof(commands)/sizeof(commands[0]);
 
 int
 Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned long args[], int nargs)
 {
 	int i;
 	struct command *command;
-	unsigned char msg[255];
+	unsigned char msg[255], paramresult[255];
 	int msglen, amt;
 	int index;
+	int paramfail;
 
-	for(i = 0, command = NULL; i < numcommands && ! command; i++){
+	for(i = 0, command = NULL; i < 256 && ! command; i++){
+		if (! commands[i].name)
+			continue;
 		if (! strcmp(commands[i].name, name))
 			command = &commands[i];
 	}
@@ -199,8 +202,14 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 			msg[index++] = args[i];
 			msg[0]++;
 			break;
+		case 'p':
+			paramfail = Command("param", paramresult, usbfd, pipefd, &args[i], 2);
+			i += 2;
+			if (paramfail)
+				return paramfail;
+			break;
 		default: 
-			sprintf(errstr, "Arg %d: bad format '%c': only b or i allowed", command->format[i]);
+			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p allowed", command->format[i]);
 			return -EINVAL;
 		}
 	}
