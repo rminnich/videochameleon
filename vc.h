@@ -1,9 +1,12 @@
 struct command {
-	char *name;
-	unsigned char athenacommand;
-	int nargs;
-	char *format;
-	unsigned char ack;
+	char *name; /* used by the user */
+	unsigned char athenacommand; /* for athena firmware */
+	int nargs; /* required number of args */
+	char *format; /* how args are encoded into the packet -- b is byte, i is 4-byte big-endian integer */
+	unsigned char ack; /* how the board acknowledges the command */
+	char *usage; /* what you have to type */
+	/* generic handler. You can leave it empty.*/
+	void (*handler)(struct command *command, unsigned long *args, unsigned char *result, int resultlen);
 };
 
 /* msg.c */

@@ -25,7 +25,7 @@ static int luacommand (lua_State *L) {
 	lua_Number sum = 0;
 	int i;
 	int nargs = 0;
-	int success;
+	int failure;
 	unsigned char result[256];
 	for(i = 1; i <= n; i++)printf("%d: %s\n", i, lua_tostring(L, i));
 	/* we at least need the command name */
@@ -47,12 +47,14 @@ static int luacommand (lua_State *L) {
 		nargs++;
 	}
 
-	success = Command(command, result, usbfd, pipefd, args, nargs); 
-	if (success) {
+	failure = Command(command, result, usbfd, pipefd, args, nargs); 
+	if (failure) {
 		lua_pushstring(L, errstr);
 		lua_error(L);
 	}
-	lua_pushnumber(L, success);        /* first result */
+	/* future: consider pushing succcess/failure, ack value, and resulting array */
+	/* lua is multivalue return ... */
+	lua_pushnumber(L, failure);        /* first result */
 	return 1;                   /* number of results */
 }
 

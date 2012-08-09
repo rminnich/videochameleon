@@ -134,8 +134,28 @@ ProcessMessages(int usbfd, int pipefd)
 	}
 }
 
+/* here's an example handler for commands which create data you want dumped. */
+/* note you can put aliases for the same command in the table, and for some you can dump memory
+ * and for others you can do something else, e.g. dumpedid and edid
+ * it is assumed that if this is called, the ack was correct. Also, it is called with the 
+ * result data, not including the length and response code (i.e. with &result[2]
+ */
+void dumpresult(struct command *c, unsigned long *args, unsigned char *result, int resultlen)
+{
+	int i, j;
+	for(i = 0; i < resultlen; i += 16){
+		printf("%08x:", args[0]+i);
+		for(j = 0; j < 16 && i + j < resultlen; j++){
+			printf(" %02x", result[i+j]);
+		}
+		printf("\n");
+	}
+}
+
+/* this should probably be in a different file. */
 struct command commands[] = {
-	{"debugon", '\t', 0, NULL, '\f'},
+	{"debugon", '\t', 0, NULL, '\f', "debugon", NULL},
+	{"rm", 0x52, 2, "ii", 'R', "read base length", dumpresult},
 };
 /* I miss Go already */
 int numcommands = sizeof(commands)/sizeof(commands[0]);
@@ -147,6 +167,7 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 	struct command *command;
 	unsigned char msg[255];
 	int msglen, amt;
+	int index;
 
 	for(i = 0, command = NULL; i < numcommands && ! command; i++){
 		if (! strcmp(commands[i].name, name))
@@ -156,19 +177,50 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 	if (! command)
 		return -ENOENT;
 
+	if (nargs != command->nargs){
+		sprintf(errstr, "Usage: %s", command->usage);
+		return -EINVAL;
+	}
+
 	msg[0] = 2;
 	msg[1] = command->athenacommand;
+	index = 2;
 
 	for(i = 0; i < command->nargs; i++){
+		switch(command->format[i]){
+		case 'i':
+			msg[index++] = args[i]>>24;
+			msg[index++] = args[i]>>16;
+			msg[index++] = args[i]>>8;
+			msg[index++] = args[i];
+			msg[0] += 4;
+			break;
+		case 'b':
+			msg[index++] = args[i];
+			msg[0]++;
+			break;
+		default: 
+			sprintf(errstr, "Arg %d: bad format '%c': only b or i allowed", command->format[i]);
+			return -EINVAL;
+		}
 	}
 	amt = SendMsg(usbfd, msg);
 	if (amt < msg[0])
 		return amt;
 
 	/* we receive from the pipe. We are just scavenging what's left of debug prints */
+	/* note because this is structured as a filter (think shell) we get to use the same function
+	 * with different fds.
+	 */
 	RecvMsg(pipefd, result);
-
-	return result[1] == command->ack;
+	if (result[0] == command->ack){
+		if (command->handler)
+			command->handler(command, args, &result[2], result[0]-2);
+	} else {
+		sprintf(errstr, "%s command received wrong reply type: expected %02x, got %02x", 
+			command->name, command->ack, result[0]);
+	}
+	return result[1] != command->ack;
 	
 }
 
