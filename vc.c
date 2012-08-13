@@ -26,16 +26,7 @@ static int luacommand (lua_State *L) {
 		lua_error(L);
 	}
 	command = lua_tostring(L, 1);
-	for (i = 2; i <= n; i++) {
-		if (!lua_isnumber(L, i)) {
-			lua_pushstring(L, "incorrect argument: must be a number");
-			lua_error(L);
-		}
-		args[i-2] = lua_tonumber(L, i);
-		nargs++;
-	}
-
-	failure = Command(command, result, usbfd, pipefd, args, nargs); 
+	failure = Command(L, command, result, usbfd, pipefd); 
 	if (failure) {
 		lua_pushstring(L, errstr);
 		lua_error(L);
@@ -54,11 +45,6 @@ int main(int argc, char* argv[])
 	/* first set up hardware ... */
 	Setup("/dev/ttyUSB0", &usbfd, &pipefd);
 	/* and make sure the thing stays active */
-	success = Command("debug", result, usbfd, pipefd, NULL, 0);
-	printf("Debug Startup Command %s\n", success > 0? "ACK" : "NACK");
-	if (! success)
-		printf("It did not respond, continue at your own risk of frustration\n");
-
 	lua_State *luaVM = luaL_newstate();  /* create state */
 	if (luaVM == NULL) {
 		l_message(argv[0], "cannot create state: not enough memory");
@@ -71,6 +57,11 @@ int main(int argc, char* argv[])
 	printf("Simple Functional lua interpreter\n");
 	printf("Based on lua version 4.0.1\n");
 	printf("Registering Custom C++ Functions.\n");
+
+	success = Command(luaVM, "debug", result, usbfd, pipefd);
+	printf("Debug Startup Command %s\n", success > 0? "ACK" : "NACK");
+	if (! success)
+		printf("It did not respond, continue at your own risk of frustration\n");
 
 	
 	printf("Enter lua commands. type 'exit' to exit\n");

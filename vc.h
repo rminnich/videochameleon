@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <lualib.h>
+#include <luaconf.h>
 #include <lauxlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -14,11 +15,13 @@ struct command {
 	char *name; /* used by the user */
 	unsigned char *athenacommand; /* for athena firmware  -- can by multiple bytes for apps*/
 	int nargs; /* required number of args */
+	char *argtypes; /* type for each arg: i for integer, s for "lua string" */
 	char *format; /* how args are encoded into the packet -- b is byte, i is 4-byte big-endian integer */
 	unsigned char ack; /* how the board acknowledges the command */
 	char *usage; /* what you have to type */
 	/* generic handler. You can leave it empty.*/
-	void (*handler)(const struct command *command, unsigned long *args, unsigned char *result, int resultlen);
+  void (*handler)(lua_State *L, const struct command *command, 
+		  unsigned char *result, int resultlen);
 };
 
 /* msg.c */
@@ -26,8 +29,10 @@ int SendMsg(int fd, char *msg);
 int RecvMsg(int fd, char *msg);
 void PrintMsg(char *msg);
 void ProcessMessages(int usbfd, int pipefd);
-void dumpresult(const struct command *c, unsigned long *args, unsigned char *result, int resultlen);
-int Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned long args[], int nargs);
+void dumpresult(lua_State *l, const struct command *c,  
+		unsigned char *result, int resultlen);
+int Command(lua_State *L, 
+	    const char *name, unsigned char *result, int usbfd, int pipefd);
 int SetUp(char *serialport, int *ufd, int *pfd);
 extern const struct command commands[];
 extern const int numcommands;

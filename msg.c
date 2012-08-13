@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include "vc.h"
 
 char errstr[1024];
@@ -140,11 +132,15 @@ ProcessMessages(int usbfd, int pipefd)
  * it is assumed that if this is called, the ack was correct. Also, it is called with the 
  * result data, not including the length and response code (i.e. with &result[2]
  */
-void dumpresult(const struct command *c, unsigned long *args, unsigned char *result, int resultlen)
+void dumpresult(lua_State *L, 
+		const struct command *c, 
+		unsigned char *result, int resultlen)
 {
 	int i, j;
+	/* The first arg is the base address */
+	unsigned int base = lua_tonumber(L, 0);
 	for(i = 0; i < resultlen; i += 16){
-		printf("%08x:", args[0]+i);
+		printf("%08x:", base+i);
 		for(j = 0; j < 16 && i + j < resultlen; j++){
 			printf(" %02x", result[i+j]);
 		}
@@ -153,17 +149,21 @@ void dumpresult(const struct command *c, unsigned long *args, unsigned char *res
 }
 
 int
-Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned long args[], int nargs)
+Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pipefd)
 {
+	char err[128];
 	int i;
 	const struct command *command;
-	unsigned char msg[255], paramresult[255];
-	int msglen, amt;
+	const char *cp;
+	unsigned char msg[255], paramresult[255], paramcommand[32];
+	unsigned int msglen, amt, len, val;
 	int index;
 	int paramfail;
 	int paramindex = 1;
 	unsigned long paramargs[2];
 	int cmdlen;
+	int nargs;
+
 
 	for(i = 0, command = NULL; i < numcommands && ! command; i++){
 		if (! commands[i].name)
@@ -174,6 +174,31 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 
 	if (! command)
 		return -ENOENT;
+
+	for (nargs = 0, i = 2; i <= command->nargs; i++) {
+		switch(command->argtypes[i]){
+		case 's': 
+			if (lua_isstring(L, i))
+				continue;
+			sprintf(err, "arg %d: must be a number", i);
+			lua_pushstring(L, err);
+			lua_error(L);
+			break;
+		case 'i':
+			if (lua_isnumber(L, i))
+				continue;
+			sprintf(err, "arg %d: must be a number", i);
+			lua_pushstring(L, err);
+			lua_error(L);
+			break;
+		default:
+			sprintf(err, "arg %d is not a string or number", i);
+			lua_pushstring(L, err);
+			lua_error(L);
+			break;
+		}
+		nargs++;
+	}
 
 	if (nargs != command->nargs){
 		sprintf(errstr, "Usage: %s", command->usage);
@@ -189,23 +214,47 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 	for(i = 0; i < command->nargs; i++){
 		switch(command->format[i]){
 		case 'i':
-			msg[index++] = args[i]>>24;
-			msg[index++] = args[i]>>16;
-			msg[index++] = args[i]>>8;
-			msg[index++] = args[i];
+			val = lua_tonumber(L, i);
+			msg[index++] = val>>24;
+			msg[index++] = val>>16;
+			msg[index++] = val>>8;
+			msg[index++] = val;
 			msg[0] += 4;
 			break;
 		case 'b':
-			msg[index++] = args[i];
+			msg[index++] = val;
 			msg[0]++;
 			break;
 		case 'p':
 			/* params are sent as separate commands */
-			paramargs[0] = paramindex++;
-			paramargs[1] = args[i];
-			paramfail = Command("param", paramresult, usbfd, pipefd, paramargs, 2);
+			sprintf(paramcommand, "param %d %d", paramindex++, 
+				lua_tonumber(L, i));
+			paramfail = Command(L, paramcommand, paramresult, 
+					    usbfd, pipefd);
 			if (paramfail)
 				return paramfail;
+			break;
+		/* the following are for variable length entities */
+		/* it is an error for the length to be > 253 */
+		case 's':
+			/* push the length of the string, then the string */
+			cp = lua_tostring(L, i);
+			len = lua_rawlen(L, i);
+			if (! cp){
+				sprintf(errstr,
+					"Arg %d is not a string", i);
+				return -EINVAL;
+			}
+			if (index + len > 253){
+				sprintf(errstr,
+					"String at arg %d len %d too large",
+					i, len);
+				return -EINVAL;
+			}
+			msg[index++] = len;
+			memmove(&msg[index], cp, len);
+			index += len;
+			msg[0] += 1 + len;
 			break;
 		default: 
 			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p allowed", command->format[i]);
@@ -223,7 +272,7 @@ Command(const char *name, unsigned char *result, int usbfd, int pipefd, unsigned
 	RecvMsg(pipefd, result);
 	if (result[0] == command->ack){
 		if (command->handler)
-			command->handler(command, args, &result[2], result[0]-2);
+			command->handler(L, command, &result[2], result[0]-2);
 	} else {
 		sprintf(errstr, "%s command received wrong reply type: expected %02x, got %02x", 
 			command->name, command->ack, result[0]);
