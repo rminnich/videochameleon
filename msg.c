@@ -38,8 +38,9 @@ SendMsg(int fd, unsigned char *msg)
 int
 RecvMsg(int fd, unsigned char *msg)
 {
-	int amt, datalen, i;
+	int amt, datalen, i, readamt;
 	unsigned char csum;
+	unsigned char *cp;
 	amt = read(fd, &msg[0], 1);
 	if (amt < 0)
 		sprintf(errstr, "RecvMsg: tried to read 1: %s", strerror(errno));
@@ -47,7 +48,15 @@ RecvMsg(int fd, unsigned char *msg)
 		return 0;
 
 	datalen = msg[0] - 1;
-	amt = read(fd, &msg[1], datalen);
+	cp = &msg[1];
+	amt = 0;
+	while (amt < datalen){
+		readamt = read(fd, cp, datalen-amt);
+		if (readamt < 0)
+			break;
+		amt += readamt;
+		cp += readamt;
+	}
 	if (amt < datalen){
 		sprintf(errstr, "RecvMsg: tried to read %d, got %d:%s", msg[0], amt, strerror(errno));
 		return 0;
@@ -130,10 +139,12 @@ ProcessMessages(int usbfd, int pipefd)
 	unsigned char msg[255];
 	while (1){
 		RecvMsg(usbfd, msg);
-		if (msg[1] != '\r')
+		if (msg[1] != '\r'){
+			msg[0]--;
 			write(pipefd, msg, msg[0]);
-		else
+		} else {
 			PrintMsg(msg);
+		}
 		
 	}
 }
