@@ -7,12 +7,9 @@ static void l_message (const char *pname, const char *msg) {
   luai_writestringerror("%s\n", msg);
 }
 static int luacommand (lua_State *L) {
-	unsigned long args[8];
-	unsigned const char *command;
+	const char *command;
 	int n = lua_gettop(L);    /* number of arguments */
-	lua_Number sum = 0;
 	int i;
-	int nargs = 0;
 	int failure;
 	unsigned char result[256];
 	for(i = 1; i <= n; i++)printf("%d: %s\n", i, lua_tostring(L, i));
@@ -41,9 +38,12 @@ int main(int argc, char* argv[])
 {
 	int success;
 	char *command;
-	unsigned char result[2];
+	unsigned char result[255];
 	/* first set up hardware ... */
 	Setup("/dev/ttyUSB0", &usbfd, &pipefd);
+
+	sleep(1);
+
 	/* and make sure the thing stays active */
 	lua_State *luaVM = luaL_newstate();  /* create state */
 	if (luaVM == NULL) {
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 	printf("Based on lua version 4.0.1\n");
 	printf("Registering Custom C++ Functions.\n");
 
-	success = Command(luaVM, "debug", result, usbfd, pipefd);
+	success = Command(luaVM, "debugon", result, usbfd, pipefd);
 	printf("Debug Startup Command %s\n", success > 0? "ACK" : "NACK");
 	if (! success)
 		printf("It did not respond, continue at your own risk of frustration\n");

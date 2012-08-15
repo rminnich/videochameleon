@@ -8,10 +8,10 @@ char errstr[1024];
  * so screw it.
  */
 int
-SendMsg(int fd, char *msg)
+SendMsg(int fd, unsigned char *msg)
 {
-	unsigned char csum;
-	int amt, datalen, i;
+	unsigned char csum = 0;
+	int amt, datalen, i, j;
 	/* length is in the first byte. Since it's a byte, the only 
 	 * invalid value is zero, meaning nothing to send.
 	 */
@@ -20,24 +20,23 @@ SendMsg(int fd, char *msg)
 	/* length has to include checksum */
 	datalen = msg[0];
 	msg[0]++;
-	/* write it out and while that is happening ... */
-
-	amt = write(fd, msg, datalen);
-	if (amt < datalen){
-		sprintf(errstr, "SendMsg: tried to send %d but only sent %d: %s", datalen, amt, strerror(errno));
-		return amt;
-	}
 	for(i = 0; i < datalen; i++)
 		csum += msg[i];
 
-	csum = (~csum) + 1;
-	/* maybe it will fail, but we'll find out later. */
-	write(fd, &csum, 1);
+	msg[datalen] = (~csum) + 1;
+
+	amt = write(fd, msg, msg[0]);
+	if (amt < msg[0]){
+		sprintf(errstr, "SendMsg: tried to send %d but only sent %d: %s", msg[0], amt, strerror(errno));
+		return amt;
+	}
+
+	return amt;
 }
 
 /* note this works for both the usbfd and the pipefd -- we're using a filter model */
 int
-RecvMsg(int fd, char *msg)
+RecvMsg(int fd, unsigned char *msg)
 {
 	int amt, datalen, i;
 	unsigned char csum;
@@ -47,13 +46,13 @@ RecvMsg(int fd, char *msg)
 	if (amt == 0)
 		return 0;
 
-	amt = read(fd, &msg[1], msg[0]);
+	datalen = msg[0] - 1;
+	amt = read(fd, &msg[1], datalen);
 	if (amt < datalen){
 		sprintf(errstr, "RecvMsg: tried to read %d, got %d:%s", msg[0], amt, strerror(errno));
 		return 0;
 	}
 
-	datalen = msg[0]-1;
 	/* length includes checksum */
 	for(i = csum = 0; i < datalen; i++)
 		csum += msg[i];
@@ -63,50 +62,63 @@ RecvMsg(int fd, char *msg)
 		return 0;
 	}
 	
-	return datalen;
+	return datalen - 1;
+}
+
+unsigned long int parseInt(char **data, int numBytes)
+{
+	int j;
+	unsigned long val = 0;
+	for (j = 0; j < numBytes; j++)
+		val = (val << 8) + *(*data)++;
+	return val;
 }
 
 /* print a message formatted in the bizarro format */
 /* this is an asynchronous activity but it seems the easiest path. */
 void
-PrintMsg(char *msg)
+PrintMsg(unsigned char *msg)
 {
 	/* it starts at msg[2] */
-	char *print = &msg[2];
+	char *print = (char *)&msg[2];
 	int printlen = strlen(print);
 	char *data = &print[printlen+1];
-	int index = 0;
-	int formatting = 0;
-	unsigned long val;
+	int i, formatting = 0, val;
 
-	/* the formatting variable helps guarantee we don't execute this loop with a NULL *print */
-	while (*print){
-		if (*print == '%'){
-			formatting = 1;
-			continue;
-		}
-		if (! formatting){
-			printf("%c", *print);
-			continue;
-		}
-		/* such fun we will have! */
-		switch(*print++){
-		case 's':
-			printf(data);
-			break;
-		case 'l':
-			val = data[index] << 24 | data[index+1] << 16 | data[index+2] << 8 | data[index+3];
-			index += 4;
-			printf("%04x", val);
-			break;
-		default: 
-			val = data[index+2] << 8 | data[index+3];
-			index += 2;
-			printf("%02x", val);
-			break;
+	val = 0;
+	for (i = 0; i < printlen; ++i) {
+		if (!formatting) {
+			if (print[i] == '%')
+				formatting = 1;
+			else
+				printf("%c", print[i]);
+		} else {
+			switch(print[i]) {
+			case 'd':
+				printf("%ld", val + parseInt(&data, 2));
+				break;
+			case 'x':
+				printf("%04lx", val + parseInt(&data, 2));
+				break;
+			case 'l':
+				val = parseInt(&data, 2) << 16;
+				continue;
+				break;
+			case 's':
+				printf("%s", data);
+				data = data + strlen(data);
+				break;
+			default:
+				printf("<<<Broken Formatter:%%%c>>>", print[i]);
+				break;
+			}
+			val = 0;
+			formatting = 0;
 		}
 	}
-	
+	printf("\n");
+	/* Print out the raw formatter for comparison */
+	printf("%s\n", print);
 }
 
 /* suck in messages. If they are just informational, print them out.
@@ -118,11 +130,11 @@ ProcessMessages(int usbfd, int pipefd)
 	unsigned char msg[255];
 	while (1){
 		RecvMsg(usbfd, msg);
-		if (msg[1] != '\r'){
+		if (msg[1] != '\r')
 			write(pipefd, msg, msg[0]);
-			continue;
-		}
-		PrintMsg(msg);
+		else
+			PrintMsg(msg);
+		
 	}
 }
 
@@ -148,64 +160,93 @@ void dumpresult(lua_State *L,
 	}
 }
 
-int
-Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pipefd)
+/**
+ * Given the name of a command, returns you a pointer to the command spec
+ *
+ * @param name		The name of the command to find
+ * @return A pointer to the spec for the command, or NULL if there's an error
+ */
+const struct command *findCommandByName(const char *name)
 {
-	char err[128];
 	int i;
-	const struct command *command;
-	const char *cp;
-	unsigned char msg[255], paramresult[255], paramcommand[32];
-	unsigned int msglen, amt, len, val;
-	int index;
-	int paramfail;
-	int paramindex = 1;
-	unsigned long paramargs[2];
-	int cmdlen;
-	int nargs;
 
+	if (!name)
+		return NULL;
 
-	for(i = 0, command = NULL; i < numcommands && ! command; i++){
-		if (! commands[i].name)
+	for(i = 0; i < numcommands; i++){
+		if (!commands[i].name)
 			continue;
-		if (! strcmp(commands[i].name, name))
-			command = &commands[i];
+		if (!strcmp(commands[i].name, name))
+			return &commands[i];
 	}
+	return NULL;
+}
 
-	if (! command)
-		return -ENOENT;
+/**
+ * Confirm that the arguments for a command have been set up correctly
+ *
+ * @param L		The lua state to check the command structure in
+ * @param command	A pointer to the command spec to check against
+ * @return 0 on success, or the index of the offending argument
+ */
+int checkCommandFormat(lua_State *L, const struct command *command)
+{
+	int i;
+	char err[128];
 
-	for (nargs = 0, i = 2; i <= command->nargs; i++) {
+	for (i = 0; i < command->nargs; i++) {
 		switch(command->argtypes[i]){
 		case 's': 
-			if (lua_isstring(L, i))
+			if (lua_isstring(L, i + 2))
 				continue;
-			sprintf(err, "arg %d: must be a number", i);
-			lua_pushstring(L, err);
-			lua_error(L);
+			sprintf(err, "arg %d: must be a number", i + 2);
 			break;
 		case 'i':
-			if (lua_isnumber(L, i))
+			if (lua_isnumber(L, i + 2))
 				continue;
-			sprintf(err, "arg %d: must be a number", i);
-			lua_pushstring(L, err);
-			lua_error(L);
+			sprintf(err, "arg %d: must be a number", i + 2);
 			break;
 		default:
-			sprintf(err, "arg %d is not a string or number", i);
-			lua_pushstring(L, err);
-			lua_error(L);
+			sprintf(err, "arg %d is not a string or number", i + 2);
 			break;
 		}
-		nargs++;
-	}
 
-	if (nargs != command->nargs){
-		sprintf(errstr, "Usage: %s", command->usage);
-		return -EINVAL;
+		lua_pushstring(L, err);
+		lua_error(L);
+		return i + 2;
 	}
+	return 0;
+}
 
-	msg[0] = 2;
+/**
+ * Builds a message in the msg buffer to send to the Athena board using the
+ * command spec and the data in L.
+ *
+ * @param L		The lua state to draw the parameters from
+ * @param command	A pointer to the command spec to use
+ * @param msg		A buffer to store the message in
+ * @return 0 on success, or an error code
+ */
+int buildCommandMessage(lua_State *L, const struct command* command, unsigned char *msg, int usbfd, int pipefd) {
+	int cmdlen, i, index;
+	unsigned int val, len;
+	char paramcommand[32];
+	unsigned char paramresult[255];
+	int paramfail;
+	int paramindex = 1;
+	const char *cp;
+
+	if (!msg)
+		return -1;
+
+	/*
+	 * Message format:
+	 *
+	 *  8   8 or 16
+	 * len   cmd
+	 *
+	 */
+	msg[0] = 1;
 	cmdlen = strlen(command->athenacommand);
 	memcpy(&msg[1], command->athenacommand, cmdlen);
 	msg[0] += cmdlen;
@@ -228,7 +269,7 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 		case 'p':
 			/* params are sent as separate commands */
 			sprintf(paramcommand, "param %d %d", paramindex++, 
-				lua_tonumber(L, i));
+				(int)lua_tonumber(L, i));
 			paramfail = Command(L, paramcommand, paramresult, 
 					    usbfd, pipefd);
 			if (paramfail)
@@ -257,19 +298,50 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 			msg[0] += 1 + len;
 			break;
 		default: 
-			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p allowed", command->format[i]);
+			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p allowed", i, command->format[i]);
 			return -EINVAL;
 		}
 	}
+	return 0;
+}
+
+int
+Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pipefd)
+{
+	int rv;
+	const struct command *command;
+	unsigned char msg[255];
+	unsigned int amt;
+
+	command = findCommandByName(name);
+	if (!command)
+		return -ENOENT;
+
+	rv = checkCommandFormat(L, command);
+	if (rv) {
+		sprintf(errstr, "Usage: %s", command->usage);
+		return -EINVAL;
+	}
+
+	rv = buildCommandMessage(L, command, msg, usbfd, pipefd);
 	amt = SendMsg(usbfd, msg);
 	if (amt < msg[0])
-		return amt;
+		return -errno;
 
 	/* we receive from the pipe. We are just scavenging what's left of debug prints */
 	/* note because this is structured as a filter (think shell) we get to use the same function
 	 * with different fds.
 	 */
 	RecvMsg(pipefd, result);
+	printf("recieved\n");
+	{int i, j; unsigned char* msg = result; int datalen = msg[0]; 
+		for(i = 0; i < msg[0]; i += 16){
+		for(j = 0; j < 16 && i + j < datalen; j++){
+			printf(" %02x", msg[i+j]);
+		}
+		printf("\n");
+	}}
+
 	if (result[0] == command->ack){
 		if (command->handler)
 			command->handler(L, command, &result[2], result[0]-2);
@@ -278,7 +350,6 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 			command->name, command->ack, result[0]);
 	}
 	return result[1] != command->ack;
-	
 }
 
 /* we could do pthreads or some such awful thing, but why bother? Pipes are great for synchronization and data
@@ -289,11 +360,17 @@ Setup(char *serialport, int *ufd, int *pfd)
 {
 	int pipefd[2];
 	int pid;
+	struct termios newtio;
 
 	*ufd = open(serialport, O_RDWR);
 
 	if (*ufd < 0)
 		return -1;
+
+	tcgetattr(*ufd, &newtio);
+	cfmakeraw(&newtio);
+	cfsetspeed(&newtio, B115200);
+	tcsetattr(*ufd, TCSANOW, &newtio);
 
 	if (pipe(pipefd) < 0){
 		close(*ufd);

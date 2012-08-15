@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <termios.h>
 #include <lualib.h>
 #include <luaconf.h>
 #include <lauxlib.h>
@@ -13,7 +14,7 @@
 #include <readline/history.h>
 struct command {
 	char *name; /* used by the user */
-	unsigned char *athenacommand; /* for athena firmware  -- can by multiple bytes for apps*/
+	char *athenacommand; /* for athena firmware  -- can by multiple bytes for apps*/
 	int nargs; /* required number of args */
 	char *argtypes; /* type for each arg: i for integer, s for "lua string" */
 	char *format; /* how args are encoded into the packet -- b is byte, i is 4-byte big-endian integer */
@@ -25,15 +26,15 @@ struct command {
 };
 
 /* msg.c */
-int SendMsg(int fd, char *msg);
-int RecvMsg(int fd, char *msg);
-void PrintMsg(char *msg);
+int SendMsg(int fd, unsigned char *msg);
+int RecvMsg(int fd, unsigned char *msg);
+void PrintMsg(unsigned char *msg);
 void ProcessMessages(int usbfd, int pipefd);
 void dumpresult(lua_State *l, const struct command *c,  
 		unsigned char *result, int resultlen);
 int Command(lua_State *L, 
 	    const char *name, unsigned char *result, int usbfd, int pipefd);
-int SetUp(char *serialport, int *ufd, int *pfd);
+int Setup(char *serialport, int *ufd, int *pfd);
 extern const struct command commands[];
 extern const int numcommands;
 /* errstr is a global, but the difference is it has useful info as opposed to that other global, errno */
