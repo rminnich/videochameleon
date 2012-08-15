@@ -264,7 +264,7 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 	for(i = 0; i < command->nargs; i++){
 		switch(command->format[i]){
 		case 'i':
-			val = lua_tonumber(L, i);
+			val = lua_tonumber(L, i+2);
 			msg[index++] = val>>24;
 			msg[index++] = val>>16;
 			msg[index++] = val>>8;
@@ -272,13 +272,14 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 			msg[0] += 4;
 			break;
 		case 'b':
+			val = lua_tonumber(L, i+2);
 			msg[index++] = val;
 			msg[0]++;
 			break;
 		case 'p':
 			/* params are sent as separate commands */
 			sprintf(paramcommand, "param %d %d", paramindex++, 
-				(int)lua_tonumber(L, i));
+				(int)lua_tonumber(L, i+2));
 			paramfail = Command(L, paramcommand, paramresult, 
 					    usbfd, pipefd);
 			if (paramfail)
@@ -288,8 +289,8 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 		/* it is an error for the length to be > 253 */
 		case 's':
 			/* push the length of the string, then the string */
-			cp = lua_tostring(L, i);
-			len = lua_rawlen(L, i);
+			cp = lua_tostring(L, i+2);
+			len = lua_rawlen(L, i+2);
 			if (! cp){
 				sprintf(errstr,
 					"Arg %d is not a string", i);
@@ -307,7 +308,7 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 			msg[0] += 1 + len;
 			break;
 		default: 
-			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p allowed", i, command->format[i]);
+			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p or s allowed", i, command->format[i]);
 			return -EINVAL;
 		}
 	}
