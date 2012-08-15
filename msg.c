@@ -126,8 +126,6 @@ PrintMsg(unsigned char *msg)
 		}
 	}
 	printf("\n");
-	/* Print out the raw formatter for comparison */
-	printf("%s\n", print);
 }
 
 /* suck in messages. If they are just informational, print them out.
@@ -356,7 +354,7 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 		printf("\n");
 	}}
 
-	if (result[0] == command->ack){
+	if (result[1] == command->ack){
 		if (command->handler)
 			command->handler(L, command, &result[2], result[0]-2);
 	} else {

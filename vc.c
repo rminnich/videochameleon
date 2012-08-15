@@ -36,7 +36,7 @@ static int luacommand (lua_State *L) {
 
 int main(int argc, char* argv[])
 {
-	int success;
+	int failure;
 	char *command;
 	unsigned char result[255];
 	/* first set up hardware ... */
@@ -58,9 +58,9 @@ int main(int argc, char* argv[])
 	printf("Based on lua version 4.0.1\n");
 	printf("Registering Custom C++ Functions.\n");
 
-	success = Command(luaVM, "debugon", result, usbfd, pipefd);
-	printf("Debug Startup Command %s\n", success > 0? "ACK" : "NACK");
-	if (! success)
+	failure = Command(luaVM, "debugon", result, usbfd, pipefd);
+	printf("Debug Startup Command %s\n", failure? "NAK": "ACK" );
+	if (failure)
 		printf("It did not respond, continue at your own risk of frustration\n");
 
 	
