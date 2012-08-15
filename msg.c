@@ -344,8 +344,11 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 	 * with different fds.
 	 */
 	RecvMsg(pipefd, result);
-	printf("recieved\n");
-	{int i, j; unsigned char* msg = result; int datalen = msg[0]; 
+	if (0) {
+		int i, j;
+		unsigned char* msg = result;
+		int datalen = msg[0]; 
+		printf("Received: ");
 		for(i = 0; i < msg[0]; i += 16){
 		for(j = 0; j < 16 && i + j < datalen; j++){
 			printf(" %02x", msg[i+j]);
