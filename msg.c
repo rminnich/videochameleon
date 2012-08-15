@@ -383,6 +383,7 @@ Setup(char *serialport, int *ufd, int *pfd)
 	tcgetattr(*ufd, &newtio);
 	cfmakeraw(&newtio);
 	cfsetspeed(&newtio, B115200);
+	newtio.c_cflag &= ~CRTSCTS;
 	tcsetattr(*ufd, TCSANOW, &newtio);
 
 	if (pipe(pipefd) < 0){
