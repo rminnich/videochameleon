@@ -11,7 +11,7 @@ int
 SendMsg(int fd, unsigned char *msg)
 {
 	unsigned char csum = 0;
-	int amt, datalen, i, j;
+	int amt, datalen, i;
 	/* length is in the first byte. Since it's a byte, the only 
 	 * invalid value is zero, meaning nothing to send.
 	 */
