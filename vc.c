@@ -68,6 +68,9 @@ int main(int argc, char* argv[])
 	while (1){
 		int status;
        		command = readline ("A>");
+		if (command)
+			add_history(command);
+
 		status = luaL_dostring(luaVM, command);
 		if (status != LUA_OK && !lua_isnil(luaVM, -1)) {
 			const char *msg = lua_tostring(luaVM, -1);
