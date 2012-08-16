@@ -70,6 +70,8 @@ int main(int argc, char* argv[])
        		command = readline ("A>");
 		if (command)
 			add_history(command);
+		if (!command || !strcmp(command, "exit"))
+			break;
 
 		status = luaL_dostring(luaVM, command);
 		if (status != LUA_OK && !lua_isnil(luaVM, -1)) {
@@ -83,6 +85,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	
+	printf("Exiting...\n");
 	lua_close(luaVM);
 	
 	return 0;
