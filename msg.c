@@ -74,7 +74,7 @@ RecvMsg(int fd, unsigned char *msg)
 	return datalen - 1;
 }
 
-unsigned long int parseInt(char **data, int numBytes)
+unsigned int parseInt(char **data, int numBytes)
 {
 	int j;
 	unsigned long val = 0;
@@ -102,12 +102,15 @@ PrintMsg(unsigned char *msg)
 			else
 				printf("%c", print[i]);
 		} else {
-			switch(print[i]) {
+			switch(tolower(print[i])) {
 			case 'd':
-				printf("%ld", val + parseInt(&data, 2));
+				printf("%u", val + parseInt(&data, 2));
 				break;
 			case 'x':
-				printf("%04lx", val + parseInt(&data, 2));
+				printf("%04x", val + parseInt(&data, 2));
+				break;
+			case 'c':
+				printf("%c", *data++);
 				break;
 			case 'l':
 				val = parseInt(&data, 2) << 16;
@@ -153,8 +156,8 @@ ProcessMessages(int usbfd, int pipefd)
  * it is assumed that if this is called, the ack was correct. Also, it is called with the 
  * result data, not including the length and response code (i.e. with &result[2]
  */
-void dumpresult(lua_State *L, 
-		const struct command *c, 
+void dumpresult(lua_State *L,
+		const struct command *c,
 		unsigned char *result, int resultlen)
 {
 	int i, j;
@@ -167,6 +170,14 @@ void dumpresult(lua_State *L,
 		}
 		printf("\n");
 	}
+}
+
+void acknack(lua_State *L, const struct command *c, unsigned char ackornack)
+{
+	if (ackornack == c->ack)
+		printf("ACK!\n");
+	else
+		printf("NACK!\n");
 }
 
 /**
@@ -248,13 +259,6 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 	if (!msg)
 		return -1;
 
-	/*
-	 * Message format:
-	 *
-	 *  8   8 or 16
-	 * len   cmd
-	 *
-	 */
 	msg[0] = 1;
 	cmdlen = strlen(command->athenacommand);
 	memcpy(&msg[1], command->athenacommand, cmdlen);
@@ -264,7 +268,7 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 	for(i = 0; i < command->nargs; i++){
 		switch(command->format[i]){
 		case 'i':
-			val = lua_tonumber(L, i+2);
+			val = lua_tonumber(L, i + 2);
 			msg[index++] = val>>24;
 			msg[index++] = val>>16;
 			msg[index++] = val>>8;
@@ -272,14 +276,14 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 			msg[0] += 4;
 			break;
 		case 'b':
-			val = lua_tonumber(L, i+2);
+			val = lua_tonumber(L, i + 2);
 			msg[index++] = val;
 			msg[0]++;
 			break;
 		case 'p':
 			/* params are sent as separate commands */
 			sprintf(paramcommand, "param %d %d", paramindex++, 
-				(int)lua_tonumber(L, i+2));
+				(int)lua_tonumber(L, i + 2));
 			paramfail = Command(L, paramcommand, paramresult, 
 					    usbfd, pipefd);
 			if (paramfail)
@@ -289,8 +293,8 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 		/* it is an error for the length to be > 253 */
 		case 's':
 			/* push the length of the string, then the string */
-			cp = lua_tostring(L, i+2);
-			len = lua_rawlen(L, i+2);
+			cp = lua_tostring(L, i + 2);
+			len = lua_rawlen(L, i + 2);
 			if (! cp){
 				sprintf(errstr,
 					"Arg %d is not a string", i);
@@ -355,9 +359,11 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 		printf("\n");
 	}}
 
+	acknack(L, command, result[1]);
+
 	if (result[1] == command->ack){
 		if (command->handler)
-			command->handler(L, command, &result[2], result[0]-2);
+			command->handler(L, command, &result[2], result[0] - 2);
 	} else {
 		sprintf(errstr, "%s command received wrong reply type: expected %02x, got %02x", 
 			command->name, command->ack, result[0]);

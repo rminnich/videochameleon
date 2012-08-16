@@ -3,11 +3,11 @@
 /* there are only 256 commands. Just index the table by the command number. */
 const struct command commands[] = {
 	{"debugon", "\t", 0, NULL, NULL, '\f', "debugon", NULL},
-	{"param", "\x11", 1, "ii", "bi", 0xc, "param <param #> <value>", NULL},
+	{"param", "\x11", 2, "ii", "bi", 0xc, "param <param #> <value>", NULL},
 	{"rm", "R", 2, "ii", "ii", 'R', "read base length", dumpresult},
 	{"wm", "\x52", 2, "is", "is", 0xc, "write base string", NULL},
 	{"app0", "\x12\0", 0, "", NULL, 0xc,   "Re-initialize NVRAM"},
-	{"app1", "\x12\x01", 0, "", NULL, 0xc,   "Input channel enable /disable"},
+	{"app1", "\x12\x01", 2, "ii", "pp", 0xc,   "Input channel enable /disable"},
 	{"app2", "\x12\x02", 0, "", NULL, 0xc,   "Select main channel port"},
 	{"app3", "\x12\x03", 0, "", NULL, 0xc,   "Change Output Size "},
 	{"app4", "\x12\x04", 0, "", NULL, 0xc,   "Change output position"},

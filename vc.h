@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -32,6 +33,7 @@ void PrintMsg(unsigned char *msg);
 void ProcessMessages(int usbfd, int pipefd);
 void dumpresult(lua_State *l, const struct command *c,  
 		unsigned char *result, int resultlen);
+void acknack(lua_State *l, const struct command *c, unsigned char ackornack);
 int Command(lua_State *L, 
 	    const char *name, unsigned char *result, int usbfd, int pipefd);
 int Setup(char *serialport, int *ufd, int *pfd);
