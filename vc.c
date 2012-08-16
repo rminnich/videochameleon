@@ -2,10 +2,9 @@
 
 static int usbfd = -1, pipefd = -1;
 
-static void l_message (const char *pname, const char *msg)
-{
-  if (pname) luai_writestringerror("%s: ", pname);
-  luai_writestringerror("%s\n", msg);
+static void l_message (const char *pname, const char *msg) {
+	if (pname) luai_writestringerror("%s: ", pname);
+	luai_writestringerror("%s\n", msg);
 }
 
 static int help (lua_State *L)
@@ -50,10 +49,20 @@ static int luacommand (lua_State *L)
 		lua_pushstring(L, errstr);
 		lua_error(L);
 	}
-	/* future: consider pushing succcess/failure, ack value, and resulting array */
-	/* lua is multivalue return ... */
-	lua_pushnumber(L, failure);        /* first result */
-	return 1;                   /* number of results */
+	/* lua 'strings' include a null at the end -- or so the docs say */
+	/* the math here is a bit confusing. We don't need to return 
+	 * the response type (we think) in the result.
+	 * So the length is too long by 1. But we do need to return
+	 * a trailing null. That makes the length right again.
+	 * Also, recall that result[length] points to the next byte
+	 * past the end of the data -- handy!
+	 * We need to put a null at the end of the string.
+	 * That nicely fits together for us.
+	 */
+	result[result[0]] = 0;
+	lua_pushnumber(L, result[1]);
+	lua_pushlstring(L, (const char *)&result[2], result[0]);
+	return 2;                   /* number of results */
 }
 
 int main(int argc, char* argv[])
@@ -86,6 +95,9 @@ int main(int argc, char* argv[])
 	if (failure)
 		printf("It did not respond, continue at your own risk of frustration\n");
 
+	if (luaL_loadfile(luaVM, "vc.lua") || lua_pcall(luaVM, 0, 0, 0))
+		printf("cannot run configuration file: %s",
+		      lua_tostring(luaVM, -1));
 	
 	printf("Enter lua commands. type 'exit' to exit\n");
 	while (1){
