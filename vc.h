@@ -37,6 +37,8 @@ void acknack(lua_State *l, const struct command *c, unsigned char ackornack);
 int Command(lua_State *L, 
 	    const char *name, unsigned char *result, int usbfd, int pipefd);
 int Setup(char *serialport, int *ufd, int *pfd);
+const struct command *findCommandByName(const char *name);
+
 extern const struct command commands[];
 extern const int numcommands;
 /* errstr is a global, but the difference is it has useful info as opposed to that other global, errno */

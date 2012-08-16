@@ -2,11 +2,33 @@
 
 static int usbfd = -1, pipefd = -1;
 
-static void l_message (const char *pname, const char *msg) {
+static void l_message (const char *pname, const char *msg)
+{
   if (pname) luai_writestringerror("%s: ", pname);
   luai_writestringerror("%s\n", msg);
 }
-static int luacommand (lua_State *L) {
+
+static int help (lua_State *L)
+{
+	int n = lua_gettop(L);    /* number of arguments */
+	const char *name = NULL;
+	const struct command *command;
+
+	if (n != 1) {
+		lua_pushstring(L, "usage: help(\"cmd\")");
+		lua_error(L);
+	} else {
+		name = lua_tostring(L, 1);
+		command = findCommandByName(name);
+
+		lua_pushstring(L, command->usage);
+		lua_error(L);
+	}
+	return 1;
+}
+
+static int luacommand (lua_State *L)
+{
 	const char *command;
 	int n = lua_gettop(L);    /* number of arguments */
 	int i;
@@ -54,6 +76,7 @@ int main(int argc, char* argv[])
 	// initialize lua standard library functions
 	luaL_openlibs(luaVM);
 	lua_register(luaVM, "vc", luacommand);
+	lua_register(luaVM, "help", help);
 	printf("Simple Functional lua interpreter\n");
 	printf("Based on lua version 4.0.1\n");
 	printf("Registering Custom C++ Functions.\n");
@@ -68,7 +91,7 @@ int main(int argc, char* argv[])
 	while (1){
 		int status;
        		command = readline ("A>");
-		if (command)
+		if (command && strlen(command) > 0)
 			add_history(command);
 		if (!command || !strcmp(command, "exit"))
 			break;

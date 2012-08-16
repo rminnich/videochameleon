@@ -89,7 +89,7 @@ const struct command commands[] = {
 	{"app249", "\x12\xf9", 0, "", NULL, 0xc,   "IPC Test 2; Send 1 byte message from mission to LPM"},
 	{"app250", "\x12\xfa", 0, "", NULL, 0xc,   "ACC_DUMP "},
 	{"app251", "\x12\xfb", 0, "", NULL, 0xc,   "AutoGeometry"},
-	{"app253", "\x12\xfd", 0, "", NULL, 0xc,   "Pixel scan"},
+	{"app253", "\x12\xfd", 4, "iiii", "pppp", 0xc,   "Pixel scan.\nvc(\"app253\", <channel>, <X>, <Y>, <Col>)\nAll values are in multiples of 256"},
 };
 
 const int numcommands = sizeof(commands) / sizeof(commands[0]);
