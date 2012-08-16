@@ -251,7 +251,6 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 	int cmdlen, i, index;
 	unsigned int val, len;
 	char paramcommand[32];
-	unsigned char paramresult[255];
 	int paramfail;
 	int paramindex = 1;
 	const char *cp;
@@ -282,10 +281,9 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 			break;
 		case 'p':
 			/* params are sent as separate commands */
-			sprintf(paramcommand, "param %d %d", paramindex++, 
+			sprintf(paramcommand, "vc(\"param\", %d, %d)", paramindex++, 
 				(int)lua_tonumber(L, i + 2));
-			paramfail = Command(L, paramcommand, paramresult, 
-					    usbfd, pipefd);
+			paramfail = luaL_dostring(L, paramcommand);
 			if (paramfail)
 				return paramfail;
 			break;
