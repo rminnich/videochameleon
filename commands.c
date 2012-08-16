@@ -8,7 +8,7 @@ const struct command commands[] = {
 	{"wm", "\x52", 2, "is", "is", 0xc, "write base string", NULL},
 	{"app0", "\x12\0", 0, "", NULL, 0xc,   "Re-initialize NVRAM"},
 	{"app1", "\x12\x01", 2, "ii", "pp", 0xc,   "Input channel enable /disable"},
-	{"app2", "\x12\x02", 0, "", NULL, 0xc,   "Select main channel port"},
+	{"app2", "\x12\x02", 1, "i", "p", 0xc,   "Select main channel port.\nvc(\"app2\", <port number>)"},
 	{"app3", "\x12\x03", 0, "", NULL, 0xc,   "Change Output Size "},
 	{"app4", "\x12\x04", 0, "", NULL, 0xc,   "Change output position"},
 	{"app5", "\x12\x05", 0, "", NULL, 0xc,   "Change capture main channel"},
