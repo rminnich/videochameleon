@@ -95,6 +95,7 @@ PrintMsg(unsigned char *msg)
 	int i, formatting = 0, val;
 
 	val = 0;
+	printf(">>>");
 	for (i = 0; i < printlen; ++i) {
 		if (!formatting) {
 			if (print[i] == '%')
