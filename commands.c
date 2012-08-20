@@ -5,6 +5,11 @@ const struct command commands[] = {
 	{"debugon", "\t", 0, NULL, NULL, '\f', "debugon", NULL},
 	{"param", "\x11", 2, "ii", "bi", 0xc, "param <param #> <value>", NULL},
 	{"rm", "R", 2, "ii", "ii", 'R', "read base length", dumpresult},
+	/* The difference? getmem doesn't dump its output.
+	 * Arguably we can use the lua readmem function and provide a hexdump
+	 * function too. Something to think about.
+	 */
+	{"getmem", "R", 2, "ii", "ii", 'R', "read base length", NULL},
 	{"wm", "\x52", 2, "is", "is", 0xc, "write base string", NULL},
 	{"app0", "\x12\0", 0, "", NULL, 0xc,   "Re-initialize NVRAM"},
 	{"app1", "\x12\x01", 2, "ii", "pp", 0xc,   "Input channel enable /disable"},
