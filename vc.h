@@ -13,6 +13,9 @@
 #include <lauxlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+
+#define VC_HISTORY_FILE "./.vchistory"
+
 struct command {
 	char *name; /* used by the user */
 	char *athenacommand; /* for athena firmware  -- can by multiple bytes for apps*/

@@ -100,6 +100,8 @@ int main(int argc, char* argv[])
 		      lua_tostring(luaVM, -1));
 	
 	printf("Enter lua commands. type 'exit' to exit\n");
+	using_history();
+	read_history(VC_HISTORY_FILE);
 	while (1){
 		int status;
        		command = readline ("A>");
@@ -122,6 +124,8 @@ int main(int argc, char* argv[])
 	
 	printf("Exiting...\n");
 	lua_close(luaVM);
+
+	write_history(VC_HISTORY_FILE);
 	
 	return 0;
 }
