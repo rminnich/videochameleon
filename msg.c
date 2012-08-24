@@ -206,6 +206,17 @@ const struct command *findCommandByName(const char *name)
 }
 
 /**
+ * See how many arguments there are to our command on the Lua stack
+ */
+int numArgs(lua_State *L) {
+	int i = 0;
+	while (!lua_isnone(L, i))
+		i++;
+	/* the first arg is a pointer?, and the second one is the fn name */
+	return i - 2;
+}
+
+/**
  * Confirm that the arguments for a command have been set up correctly
  *
  * @param L		The lua state to check the command structure in
@@ -214,8 +225,18 @@ const struct command *findCommandByName(const char *name)
  */
 int checkCommandFormat(lua_State *L, const struct command *command)
 {
-	int i;
+	int i, args_given = numArgs(L);
 	char err[128];
+
+
+	/* Make sure we have the right number of args for the command */
+	if (command->nargs != args_given) {
+		sprintf(err, "Error, wrong number of args!\n"
+				"Expected: %d\nGiven:    %d\n",
+				command->nargs, args_given);
+		lua_pushstring(L, err);
+		lua_error(L);
+	}
 
 	for (i = 0; i < command->nargs; i++) {
 		switch(command->argtypes[i]){

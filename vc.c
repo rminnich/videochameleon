@@ -30,10 +30,8 @@ static int luacommand (lua_State *L)
 {
 	const char *command;
 	int n = lua_gettop(L);    /* number of arguments */
-	int i;
 	int failure;
 	unsigned char result[256];
-	for(i = 1; i <= n; i++)printf("%d: %s\n", i, lua_tostring(L, i));
 	/* we at least need the command name */
 	if (n < 1){
 		lua_pushstring(L, "Need at least a command name!");
@@ -69,7 +67,6 @@ int main(int argc, char* argv[])
 {
 	int failure;
 	char *command;
-	unsigned char result[255];
 	/* first set up hardware ... */
 	Setup("/dev/ttyUSB0", &usbfd, &pipefd);
 
@@ -90,7 +87,7 @@ int main(int argc, char* argv[])
 	printf("Based on lua version 4.0.1\n");
 	printf("Registering Custom C++ Functions.\n");
 
-	failure = Command(luaVM, "debugon", result, usbfd, pipefd);
+	failure = luaL_dostring(luaVM, "vc(\"debugon\")");
 	printf("Debug Startup Command %s\n", failure? "NAK": "ACK" );
 	if (failure)
 		printf("It did not respond, continue at your own risk of frustration\n");
