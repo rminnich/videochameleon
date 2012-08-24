@@ -74,12 +74,12 @@ RecvMsg(int fd, unsigned char *msg)
 	return datalen - 1;
 }
 
-unsigned int parseInt(char **data, int numBytes)
+unsigned int parseInt(unsigned char **data, int numBytes)
 {
 	int j;
 	unsigned long val = 0;
 	for (j = 0; j < numBytes; j++)
-		val = (val << 8) + *(*data)++;
+		val += *(*data)++ << (8 * j);
 	return val;
 }
 
@@ -91,7 +91,7 @@ PrintMsg(unsigned char *msg)
 	/* it starts at msg[2] */
 	char *print = (char *)&msg[2];
 	int printlen = strlen(print);
-	char *data = &print[printlen+1];
+	unsigned char *data = (unsigned char*)&print[printlen+1];
 	int i, formatting = 0, val;
 
 	val = 0;
@@ -106,9 +106,11 @@ PrintMsg(unsigned char *msg)
 			switch(tolower(print[i])) {
 			case 'd':
 				printf("%u", val + parseInt(&data, 2));
+				val = 0;
 				break;
 			case 'x':
 				printf("%04x", val + parseInt(&data, 2));
+				val = 0;
 				break;
 			case 'c':
 				printf("%c", *data++);
@@ -119,7 +121,7 @@ PrintMsg(unsigned char *msg)
 				break;
 			case 's':
 				printf("%s", data);
-				data = data + strlen(data);
+				data = data + strlen((char *)data);
 				break;
 			default:
 				printf("<<<Broken Formatter:%%%c>>>", print[i]);
