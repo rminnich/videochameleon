@@ -12,3 +12,11 @@ end
 function portscan()
 	reponse, arr = vc("scan")
 end
+
+function loadedid(filename)
+	local file = assert(io.open(filename, "r"))
+	local t = f:read("*all")
+	f:close()
+	
+	vc("wm", 0xf5a, t)
+end
