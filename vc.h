@@ -33,6 +33,9 @@ struct command {
 		  unsigned char *result, int resultlen);
 };
 
+/* edid.c */
+void printedid(FILE *, struct edid *e);
+
 /* msg.c */
 int SendMsg(int fd, unsigned char *msg);
 int RecvMsg(int fd, unsigned char *msg);
@@ -53,3 +56,4 @@ extern char errstr[];
 
 /* command defines */
 #define PARAMOK 0xc
+

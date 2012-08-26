@@ -63,6 +63,26 @@ static int luacommand (lua_State *L)
 	return 2;                   /* number of results */
 }
 
+static int dumpedid (lua_State *L)
+{
+	int n = lua_gettop(L);    /* number of arguments */
+	struct edid *e;
+	/* one and only one arg: the command block */
+	if (n != 1){
+		lua_pushstring(L, "Need an EDID block\n");
+		lua_error(L);
+	}
+	if (!lua_isstring(L, 1)) {
+		lua_pushstring(L, "Arg must be a LUA string");
+		lua_error(L);
+	}
+	e = (struct edid *)lua_tostring(L, 1);
+	printedid(stdout, e);
+	lua_pushnumber(L, 0);
+	lua_pushlstring(L, "", 0);
+	return 2;                   /* number of results */
+}
+
 int main(int argc, char* argv[])
 {
 	int i;
@@ -91,10 +111,8 @@ int main(int argc, char* argv[])
 	// initialize lua standard library functions
 	luaL_openlibs(luaVM);
 	lua_register(luaVM, "vc", luacommand);
+	lua_register(luaVM, "dumpedid", dumpedid);
 	lua_register(luaVM, "help", help);
-	printf("Simple Functional lua interpreter\n");
-	printf("Based on lua version 4.0.1\n");
-	printf("Registering Custom C++ Functions.\n");
 
 	if (senddebugon){
 		failure = luaL_dostring(luaVM, "vc(\"debugon\")");

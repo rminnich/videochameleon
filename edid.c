@@ -8,7 +8,7 @@ static void est_timings(FILE *f, struct est_timings *t, int n)
 	}
 }
 
-void std_timings(FILE *f, struct std_timing *t, int n)
+static void std_timings(FILE *f, struct std_timing *t, int n)
 {
 	int i;
 	for(i = 0; i < n; i++){
@@ -17,7 +17,7 @@ void std_timings(FILE *f, struct std_timing *t, int n)
 	}
 }
 
-void detailed_pixel_timings(FILE *f, struct detailed_pixel_timing *t)
+static void detailed_pixel_timings(FILE *f, struct detailed_pixel_timing *t)
 {
 	fprintf(f, "	hactive_lo:%d\n", t->hactive_lo);
 	fprintf(f, "	hblank_lo:%d\n", t->hblank_lo);
@@ -39,7 +39,7 @@ void detailed_pixel_timings(FILE *f, struct detailed_pixel_timing *t)
 	fprintf(f, "	misc:%d\n", t->misc);
 }
 
-void detailed_timings(FILE *f, struct detailed_timing *t, int n)
+static void detailed_timings(FILE *f, struct detailed_timing *t, int n)
 {
 	int i;
 	for(i = 0; i < n; i++){
@@ -47,6 +47,7 @@ void detailed_timings(FILE *f, struct detailed_timing *t, int n)
 		detailed_pixel_timings(f, &t->data.pixel_data);
 	}
 }
+
 void printedid(FILE *f, struct edid *e)
 {
 	int i;
