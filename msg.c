@@ -368,6 +368,9 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 	/* note because this is structured as a filter (think shell) we get to use the same function
 	 * with different fds.
 	 */
+	/* some commands have no ack! */
+	if (! command->ack)
+		return 0;
 	RecvMsg(pipefd, result);
 	if (0) {
 		int i, j;

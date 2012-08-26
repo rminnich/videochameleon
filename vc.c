@@ -65,10 +65,19 @@ static int luacommand (lua_State *L)
 
 int main(int argc, char* argv[])
 {
+	int i;
 	int failure;
 	char *command;
+	int senddebugon = 0;
 	/* first set up hardware ... */
 	Setup("/dev/ttyUSB0", &usbfd, &pipefd);
+	/* not a fan of GNU arg processing. Can we do this somehow
+	 * in LUA? Really, we need command timeouts ...
+	 */
+	for(i = 1; i < argc; i++){
+		if (! strcmp(argv[i], "-d")) /* send debugon */
+			senddebugon = 1;
+	}
 
 	sleep(1);
 
@@ -87,10 +96,12 @@ int main(int argc, char* argv[])
 	printf("Based on lua version 4.0.1\n");
 	printf("Registering Custom C++ Functions.\n");
 
-	failure = luaL_dostring(luaVM, "vc(\"debugon\")");
-	printf("Debug Startup Command %s\n", failure? "NAK": "ACK" );
-	if (failure)
-		printf("It did not respond, continue at your own risk of frustration\n");
+	if (senddebugon){
+		failure = luaL_dostring(luaVM, "vc(\"debugon\")");
+		printf("Debug Startup Command %s\n", failure? "NAK": "ACK" );
+		if (failure)
+			printf("It did not respond, continue at your own risk of frustration\n");
+	}
 
 	if (luaL_loadfile(luaVM, "vc.lua") || lua_pcall(luaVM, 0, 0, 0))
 		printf("cannot run configuration file: %s",
