@@ -59,7 +59,7 @@ static int luacommand (lua_State *L)
 	 */
 	result[result[0]] = 0;
 	lua_pushnumber(L, result[1]);
-	lua_pushlstring(L, (const char *)&result[2], result[0]);
+	lua_pushlstring(L, (const char *)&result[2], result[0]-2);
 	return 2;                   /* number of results */
 }
 
