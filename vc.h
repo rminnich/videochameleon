@@ -14,6 +14,10 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+typedef unsigned char u8;
+typedef unsigned long u32;
+#include "edid.h"
+
 #define VC_HISTORY_FILE "./.vchistory"
 
 struct command {
