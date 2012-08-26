@@ -65,8 +65,8 @@ static int luacommand (lua_State *L)
 
 static int dumpedid (lua_State *L)
 {
+	extern void parse_edid(const unsigned char *);
 	int n = lua_gettop(L);    /* number of arguments */
-	struct edid *e;
 	/* one and only one arg: the command block */
 	if (n != 1){
 		lua_pushstring(L, "Need an EDID block\n");
@@ -76,8 +76,7 @@ static int dumpedid (lua_State *L)
 		lua_pushstring(L, "Arg must be a LUA string");
 		lua_error(L);
 	}
-	e = (struct edid *)lua_tostring(L, 1);
-	printedid(stdout, e);
+	parse_edid((const unsigned char *)lua_tostring(L, 1));
 	lua_pushnumber(L, 0);
 	lua_pushlstring(L, "", 0);
 	return 2;                   /* number of results */
