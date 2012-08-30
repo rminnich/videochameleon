@@ -328,10 +328,9 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 					i, len);
 				return -EINVAL;
 			}
-			msg[index++] = len;
 			memmove(&msg[index], cp, len);
 			index += len;
-			msg[0] += 1 + len;
+			msg[0] += len;
 			break;
 		default: 
 			sprintf(errstr, "Arg %d: bad format '%c': only b or i or p or s allowed", i, command->format[i]);

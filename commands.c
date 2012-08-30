@@ -10,7 +10,7 @@ const struct command commands[] = {
 	 * function too. Something to think about.
 	 */
 	{"getmem", "R", 2, "ii", "ii", 'R', "read base length", NULL},
-	{"wm", "\x52", 2, "is", "is", 0xc, "write base string", NULL},
+	{"wm", "\x53", 2, "is", "is", 0xc, "write base string", NULL},
 	{"app0", "\x12\0", 1, "i", "p", 0xc,   "Re-initialize NVRAM"},
 	{"app1", "\x12\x01", 2, "ii", "pp", 0xc,   "Input channel enable /disable"},
 	{"port", "\x12\x02", 1, "i", "p", 0xc,   "Select main channel port. <port number>"},
