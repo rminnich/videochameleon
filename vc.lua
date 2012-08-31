@@ -1,5 +1,5 @@
 EDID_MEMORY_LOCATION = 0x0f5a
-
+EDID_LENGTH = 128
 MAX_MEM_LEN = 200
 
 function readmem (base, length)
@@ -22,11 +22,14 @@ end
 
 function writemem (base, s)
 	local addr = base
+	local bytes_written = 0
 	while string.len(s) > 0 do
 		vc("wm", addr, string.sub(s, 1, MAX_MEM_LEN))
+		bytes_written = bytes_written + math.min(MAX_MEM_LEN, string.len(s))
 		s = string.sub(s, MAX_MEM_LEN)
 		addr = addr + MAX_MEM_LEN
 	end
+	return bytes_written
 end
 
 function portscan()
@@ -36,7 +39,13 @@ end
 function loadedid(filename)
 	local f = assert(io.open(filename, "r"))
 	local t = f:read("*all")
+	local bytes_written
 	f:close()
 	
-	writemem(EDID_MEMORY_LOCATION, t)
+	return writemem(EDID_MEMORY_LOCATION, t)
+end
+
+function getcurrentedid()
+	r, edid = readmem(EDID_MEMORY_LOCATION, EDID_LENGTH)
+	return edid
 end
