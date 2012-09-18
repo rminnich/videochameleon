@@ -175,6 +175,18 @@ void dumpresult(lua_State *L,
 	}
 }
 
+void parseVarregread(lua_State *L,
+		const struct command *c,
+		unsigned char *result, int resultlen)
+{
+	int i;
+	print ("Result: ");
+	for(i = 0; i < resultlen; i++){
+		printf("%02x", result[i]);
+	}
+	print ("\n");
+}
+
 void acknack(lua_State *L, const struct command *c, unsigned char ackornack)
 {
 	if (ackornack == c->ack)
@@ -298,6 +310,12 @@ int buildCommandMessage(lua_State *L, const struct command* command, unsigned ch
 			msg[index++] = val;
 			msg[0] += 4;
 			break;
+		case 'd':
+			val = lua_tonumber(L, i + 2);
+			msg[index++] = val>>8;
+			msg[index++] = val;
+			msg[0] += 2;
+			break;
 		case 'b':
 			val = lua_tonumber(L, i + 2);
 			msg[index++] = val;
@@ -390,7 +408,7 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 			command->handler(L, command, &result[2], result[0] - 2);
 	} else {
 		sprintf(errstr, "%s command received wrong reply type: expected %02x, got %02x", 
-			command->name, command->ack, result[0]);
+			command->name, command->ack, result[1]);
 	}
 	return result[1] != command->ack;
 }

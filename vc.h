@@ -43,6 +43,8 @@ void PrintMsg(unsigned char *msg);
 void ProcessMessages(int usbfd, int pipefd);
 void dumpresult(lua_State *l, const struct command *c,  
 		unsigned char *result, int resultlen);
+void parseVarregread(lua_State *l, const struct command *c,  
+		unsigned char *result, int resultlen);
 void acknack(lua_State *l, const struct command *c, unsigned char ackornack);
 int Command(lua_State *L, 
 	    const char *name, unsigned char *result, int usbfd, int pipefd);

@@ -88,15 +88,21 @@ int main(int argc, char* argv[])
 	int failure;
 	char *command;
 	int senddebugon = 0;
-	/* first set up hardware ... */
-	Setup("/dev/ttyUSB0", &usbfd, &pipefd);
+	char *device = "/dev/ttyUSB0";
+
 	/* not a fan of GNU arg processing. Can we do this somehow
 	 * in LUA? Really, we need command timeouts ...
 	 */
 	for(i = 1; i < argc; i++){
-		if (! strcmp(argv[i], "-d")) /* send debugon */
+		if (!strcmp(argv[i], "-d")) /* send debugon */
 			senddebugon = 1;
+		if (!strcmp(argv[i], "--dev") && i < (argc - 1)) /* Specify a non-default device*/
+			device = argv[i + 1];
 	}
+
+	/* first set up hardware ... */
+	printf("Connecting to device: %s\n", device);
+	Setup(device, &usbfd, &pipefd);
 
 	sleep(1);
 
