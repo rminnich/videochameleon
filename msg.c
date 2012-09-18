@@ -180,11 +180,11 @@ void parseVarregread(lua_State *L,
 		unsigned char *result, int resultlen)
 {
 	int i;
-	print ("Result: ");
+	printf("Result: ");
 	for(i = 0; i < resultlen; i++){
-		printf("%02x", result[i]);
+		printf("%02X ", result[i]);
 	}
-	print ("\n");
+	printf("\n");
 }
 
 void acknack(lua_State *L, const struct command *c, unsigned char ackornack)

@@ -99,7 +99,7 @@ const struct command commands[] = {
 	{"app251", "\x12\xfb", 0, "", NULL, 0xc,   "AutoGeometry"},
 	{"app253", "\x12\xfd", 4, "iiii", "pppp", 0xc,   "Pixel scan.\nvc(\"app253\", <channel>, <X>, <Y>, <Col>)\nAll values are in multiples of 256"},
 	{"reset", "\x20", 1, "i", "b", 0x0c, "reset something: pass in a \"reset code\""},
-	{"varregwrite", "\x47", 3, "iii", "ibi", 0x0c, "Set a variable reg value: address, size(2), value"},
+	{"varregwrite", "\x47", 4, "iiii", "bdbd", 0x0c, "Set a variable reg value: address_len(2), address, size(2), value"},
 	{"varregread", "\x46", 3, "iii", "bdb", 0x46, "Set a variable reg value: address_len(2), address, size(2), value", parseVarregread},
 };
 
