@@ -13,12 +13,15 @@
 #include <lauxlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <sys/select.h>
 
 typedef unsigned char u8;
 typedef unsigned long u32;
 #include "edid.h"
 
 #define VC_HISTORY_FILE "./.vchistory"
+#define NO_TIMEOUT -1
+#define DEFAULT_TIMEOUT 5
 
 struct command {
 	char *name; /* used by the user */
@@ -38,7 +41,7 @@ void printedid(FILE *, struct edid *e);
 
 /* msg.c */
 int SendMsg(int fd, unsigned char *msg);
-int RecvMsg(int fd, unsigned char *msg);
+int RecvMsg(int fd, unsigned char *msg, int waitTime);
 void PrintMsg(unsigned char *msg);
 void ProcessMessages(int usbfd, int pipefd);
 void dumpresult(lua_State *l, const struct command *c,  

@@ -36,11 +36,33 @@ SendMsg(int fd, unsigned char *msg)
 
 /* note this works for both the usbfd and the pipefd -- we're using a filter model */
 int
-RecvMsg(int fd, unsigned char *msg)
+RecvMsg(int fd, unsigned char *msg, int waitTime)
 {
-	int amt, datalen, i, readamt;
+	int amt, datalen, i, readamt, rv;
 	unsigned char csum;
 	unsigned char *cp;
+	fd_set set;
+	struct timeval timeout;
+
+	if (waitTime != NO_TIMEOUT) {
+		/* Setting up to timeout if the read doesn't return */
+		FD_ZERO(&set);
+		FD_SET(fd, &set);
+		timeout.tv_sec = waitTime;
+		timeout.tv_usec = 0;
+
+		/* wait for to see if there's anything to read, if not, reutrn */
+		rv = select(fd + 1, &set, NULL, NULL, &timeout);
+		if (rv == -1) { /* select failed */
+			perror("select");
+			return -1;
+		}
+		if (!rv) { /* timeout */
+			printf("Timed out waiting for incoming message!\n");
+			return -1;
+		}
+	}
+
 	amt = read(fd, &msg[0], 1);
 	if (amt < 0)
 		sprintf(errstr, "RecvMsg: tried to read 1: %s", strerror(errno));
@@ -142,7 +164,7 @@ ProcessMessages(int usbfd, int pipefd)
 {
 	unsigned char msg[255];
 	while (1){
-		RecvMsg(usbfd, msg);
+		RecvMsg(usbfd, msg, NO_TIMEOUT);
 		if (msg[1] != '\r'){
 			msg[0]--;
 			write(pipefd, msg, msg[0]);
@@ -388,18 +410,9 @@ Command(lua_State *L, const char *name, unsigned char *result, int usbfd, int pi
 	/* some commands have no ack! */
 	if (! command->ack)
 		return 0;
-	RecvMsg(pipefd, result);
-	if (0) {
-		int i, j;
-		unsigned char* msg = result;
-		int datalen = msg[0]; 
-		printf("Received: ");
-		for(i = 0; i < msg[0]; i += 16){
-		for(j = 0; j < 16 && i + j < datalen; j++){
-			printf(" %02x", msg[i+j]);
-		}
-		printf("\n");
-	}}
+	rv = RecvMsg(pipefd, result, DEFAULT_TIMEOUT);
+	if (rv < 0) /* Nothing was read */
+		return 0;
 
 	acknack(L, command, result[1]);
 
