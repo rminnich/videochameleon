@@ -1,6 +1,12 @@
 #include "vc.h"
 
 static int usbfd = -1, pipefd = -1;
+static int signalCount = 0;
+
+void sighandler(int signal) {
+	if (signalCount++ > 4)
+		exit(-1);
+}
 
 static void l_message (const char *pname, const char *msg) {
 	if (pname) luai_writestringerror("%s: ", pname);
@@ -86,9 +92,12 @@ int main(int argc, char* argv[])
 {
 	int i;
 	int failure;
+	int childPID;
 	char *command;
 	int senddebugon = 0;
 	char *device = "/dev/ttyUSB0";
+
+	signal(SIGINT, sighandler);
 
 	/* not a fan of GNU arg processing. Can we do this somehow
 	 * in LUA? Really, we need command timeouts ...
@@ -102,7 +111,7 @@ int main(int argc, char* argv[])
 
 	/* first set up hardware ... */
 	printf("Connecting to device: %s\n", device);
-	Setup(device, &usbfd, &pipefd);
+	childPID = Setup(device, &usbfd, &pipefd);
 
 	sleep(1);
 
@@ -155,6 +164,8 @@ int main(int argc, char* argv[])
 	
 	printf("Exiting...\n");
 	lua_close(luaVM);
+	printf("Killing children (%d)...\n", childPID);
+	kill(childPID, SIGTERM);
 
 	write_history(VC_HISTORY_FILE);
 	

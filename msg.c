@@ -467,7 +467,7 @@ Setup(char *serialport, int *ufd, int *pfd)
 	*pfd = pipefd[0];
 	/* we only ever read */
 	close(pipefd[1]);
-	return 0;
+	return pid;
 }
 
 /* test */
