@@ -1,6 +1,9 @@
-EDID_MEMORY_LOCATION = 0x0f5a
-EDID_LENGTH = 128
 MAX_MEM_LEN = 200
+HOST_BUFFER_LOCATION = 0x0f5a
+HOST_BUFFER_SIZE = 0x400
+PIXEL_STORAGE_SIZE = 6
+EDID_MEMORY_LOCATION = HOST_BUFFER_LOCATION
+EDID_LENGTH = 128
 
 function readmem (base, length)
 	local current, retval
@@ -32,6 +35,22 @@ function writemem (base, s)
 	return bytes_written
 end
 
+function dumphex(val)
+	i = 1
+	offset = 0
+	while (i <= string.len(val)) do
+		j = 1
+		io.write(string.format("%04X: ", offset))
+		while (i <= string.len(val) and j <= 16) do
+			io.write(string.format("%02X ", string.byte(val, i)))
+			i = i + 1
+			j = j + 1
+		end
+		io.write("\n")
+		offset = offset + 16
+	end
+end
+
 function portscan()
 	reponse, arr = vc("scan")
 end
@@ -39,13 +58,47 @@ end
 function loadedid(filename)
 	local f = assert(io.open(filename, "r"))
 	local t = f:read("*all")
-	local bytes_written
 	f:close()
-	
-	return writemem(EDID_MEMORY_LOCATION, t)
+	writemem(EDID_MEMORY_LOCATION, t)
+
+	vc("edidmanipulation", 2)
 end
 
 function getcurrentedid()
 	r, edid = readmem(EDID_MEMORY_LOCATION, EDID_LENGTH)
 	return edid
+end
+
+function dumppixels(x, y, w, h)
+	maxpixels = HOST_BUFFER_SIZE / PIXEL_STORAGE_SIZE
+	if (w * h > maxpixels) then
+		error("Too many pixels requested!")
+	else
+		vc("grabpixels", 3, x, y, w, h)
+		r, mem = readmem(HOST_BUFFER_LOCATION,
+				PIXEL_STORAGE_SIZE * w * h)
+		return mem
+	end
+end
+
+function parsepixels(mem, x, y, w, h)
+	i = 1
+	px = 0
+	print("Pixel\tRed\tGreen\tBlue")
+	while (i < string.len(mem)) do
+		io.write(string.format("%02d\t", px))
+		px = px + 1
+		for channel = 0,2 do
+			value = string.byte(mem, i+1)
+			value = (value * 256) + string.byte(mem, i)
+			io.write(string.format("%d\t", value))
+			i = i + 2
+		end
+		io.write(string.format("\n"))
+	end
+end
+
+function readhostbuffer()
+	r, mem = readmem(HOST_BUFFER_LOCATION, HOST_BUFFER_SIZE)
+	return mem
 end
