@@ -83,18 +83,23 @@ end
 
 function parsepixels(mem, x, y, w, h)
 	i = 1
-	px = 0
+	cx = x
+	cy = y
 	print("Pixel\tRed\tGreen\tBlue")
 	while (i < string.len(mem)) do
-		io.write(string.format("%02d\t", px))
-		px = px + 1
+		io.write(string.format("(%d, %d)\t", cx, cy))
 		for channel = 0,2 do
-			value = string.byte(mem, i+1)
-			value = (value * 256) + string.byte(mem, i)
+			value = string.byte(mem, i)
+			value = value + (256 * string.byte(mem, i+1))
 			io.write(string.format("%d\t", value))
 			i = i + 2
 		end
 		io.write(string.format("\n"))
+		cx = cx + 1
+		if (cx - x >= w) then
+			cx = x
+			cy = cy + 1
+		end
 	end
 end
 
