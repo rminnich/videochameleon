@@ -76,7 +76,7 @@ function sleep(n)  -- seconds
 end
 
 function dumppixels(x, y, w, h)
-	maxpixels = HOST_BUFFER_SIZE / PIXEL_STORAGE_SIZE
+	maxpixels = math.floor(HOST_BUFFER_SIZE / PIXEL_STORAGE_SIZE)
 	if (w * h > maxpixels) then
 		error("Too many pixels requested!")
 	else
@@ -114,29 +114,25 @@ function parsepixels(mem, x, y, w, h)
 end
 
 function saveimage(filename, x, y, w, h)
-	maxpixels = HOST_BUFFER_SIZE / PIXEL_STORAGE_SIZE
-	rowsperreq = math.min(math.floor(maxpixels / w), h)
-	if (w > maxpixels) then
-		error("Requested area is too wide!")
-		return
-	end
-
+	maxpixels = math.floor(HOST_BUFFER_SIZE / PIXEL_STORAGE_SIZE)
 	of = io.open(filename,"w")
 	of:write(string.format("P3\n%d %d\n1024\n", w, h))
 
-	for req = 1,math.ceil(h / rowsperreq) do
-		pixels = dumppixels(x, y + (req - 1) * rowsperreq, w, rowsperreq)
-		p = 1
+	for row = y,(y + h) do
+		col = x
+		while col < x + w do
+			len = math.min(maxpixels, (x + w) - col)
+			pixels = dumppixels(col, row, len, 1)
+			col = col + len
 
-		for row = 1,rowsperreq do
-			for col = 1,w do
-				color = pixels[p]
-				of:write(string.format("%d\t%d\t%d\t", color[1], color[2], color[3]))
-				io.write(string.format("%d\t%d\t%d\n", color[1], color[2], color[3]))
-				p = p + 1
+			for i = 1,len do
+				p = pixels[i]
+				of:write(string.format("%d\t%d\t%d\t", p[1], p[2], p[3]))
+				io.write(string.format("%d\t%d\t%d\n", p[1], p[2], p[3]))
 			end
-			of:write("\n")
 		end
+
+		of:write("\n")
 	end
 	of:close()
 end
